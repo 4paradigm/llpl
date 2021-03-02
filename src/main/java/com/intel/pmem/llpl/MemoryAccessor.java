@@ -11,6 +11,11 @@ import java.util.Objects;
 import java.util.function.Supplier;
 import java.util.function.Function;
 import java.util.function.Consumer;
+import java.nio.ByteOrder;
+import java.lang.reflect.Field;
+import java.nio.Buffer;
+import java.nio.ByteBuffer;
+
 
 /**
  * The base class for all memory accessor classes. 
@@ -51,6 +56,25 @@ public abstract class MemoryAccessor {
 
     static {
         Util.loadLibrary();
+    }
+
+    static Field bufAddress;
+    {
+        try {
+            bufAddress = Buffer.class.getDeclaredField("address");
+            bufAddress.setAccessible(true);
+        } catch (NoSuchFieldException e) {
+            e.printStackTrace();
+        }
+    }
+    static Field bufCapacity;
+    {
+        try {
+            bufCapacity = Buffer.class.getDeclaredField("capacity");
+            bufCapacity.setAccessible(true);
+        } catch (NoSuchFieldException e) {
+            e.printStackTrace();
+        }
     }
 
     // Constructor
@@ -132,6 +156,19 @@ public abstract class MemoryAccessor {
     public long handle() {
         checkValid();
         return this.address;
+    }
+
+    public ByteBuffer asByteBuffer(long offset, int size) {
+        ByteBuffer buf = ByteBuffer.allocateDirect(0).order(ByteOrder.nativeOrder());
+        try {
+            bufAddress.setLong(buf, payloadAddress(offset));
+            bufCapacity.setInt(buf, size);
+        } catch (IllegalAccessException e) {
+            e.printStackTrace();
+        }
+        buf.limit(size);
+        buf.position(0);
+        return buf;
     }
 
     /**
